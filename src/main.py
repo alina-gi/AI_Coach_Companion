@@ -4,6 +4,8 @@ import json
 from datetime import datetime
 import os
 from textblob import TextBlob  # add this import at the top with others
+from response_engine import ResponseEngine
+
 
 class AICoachCompanion:
     def __init__(self, root):
@@ -13,11 +15,17 @@ class AICoachCompanion:
         self.root.configure(bg='#f0f0f0')
 
         # --- Load memory on startup ---
-        self.memory_file = "memory.json"
+        self.memory_file = "data/memory.json"
         self.memory_data = self.load_memory()
+
+        # --- Initialize Response Engine ---
+        self.engine = ResponseEngine(mode="local")
 
         # Chat history
         self.chat_history = []
+        
+        # Track last tone used in Auto mode
+        self.last_auto_tone = None
 
         # UI setup
         self.setup_ui()
@@ -142,7 +150,7 @@ class AICoachCompanion:
         self.tone_var = tk.StringVar(value="Balanced")
         
         # Tone radio buttons
-        tones = ["Blunt", "Balanced", "Empathetic"]
+        tones = ["Blunt", "Balanced", "Empathetic", "Auto"]
         for tone in tones:
             rb = tk.Radiobutton(
                 tone_frame,
@@ -274,21 +282,33 @@ class AICoachCompanion:
         self.generate_ai_response(message, detected_mood)
     
     def generate_ai_response(self, user_message, mood="neutral"):
-        """Generate AI response based on selected tone"""
-        tone = self.tone_var.get()
+        """Generate AI response using the ResponseEngine"""
+        selected_tone = self.tone_var.get()
         
-        # Simple response generation based on tone
-        if tone == "Blunt":
-            response = self.get_blunt_response(user_message)
-        elif tone == "Empathetic":
-            response = self.get_empathetic_response(user_message)
-        else:  # Balanced
-            response = self.get_balanced_response(user_message)
+        # Handle Auto mode: select tone based on detected mood
+        if selected_tone == "Auto":
+            # Map mood to tone: happy → Balanced, sad → Empathetic, neutral → Blunt
+            mood_to_tone = {
+                "happy": "Balanced",
+                "sad": "Empathetic",
+                "neutral": "Blunt",
+                "angry": "Blunt",
+                "stressed": "Empathetic"
+            }
+            tone = mood_to_tone.get(mood, "Balanced")
+            
+            # Show system message if tone changed (first time or different from last)
+            if tone != self.last_auto_tone:
+                self.add_message("System", f"Tone switched to {tone} (Auto mode)", "system")
+                self.last_auto_tone = tone
+        else:
+            tone = selected_tone
         
-        # Add AI response to chat
+        response = self.engine.generate_response(user_message, tone)
         self.add_message("AI Coach", response, "ai")
-
         self.log_interaction(user_message, response, mood)
+
+
     
     def get_blunt_response(self, message):
         """Generate a blunt, direct response"""
@@ -326,6 +346,8 @@ class AICoachCompanion:
     def on_tone_change(self):
         """Handle tone selection change"""
         tone = self.tone_var.get()
+        # Reset Auto tracking when switching modes (to show tone on first Auto message)
+        self.last_auto_tone = None
         self.add_message("System", f"Tone changed to: {tone}", "system")
     
     def show_memory_popup(self):
