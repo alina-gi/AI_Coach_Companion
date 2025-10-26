@@ -1,0 +1,16 @@
+# Ignore Python cache and temp files
+__pycache__/
+*.pyc
+
+# Ignore environment and config files
+.env
+.env.*
+
+# Ignore editor and build folders
+.vscode/
+.idea/
+build/
+dist/
+
+# Ignore local data files
+data/*.json
