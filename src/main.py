@@ -18,11 +18,20 @@ class AICoachCompanion:
         self.memory_file = "data/memory.json"
         self.memory_data = self.load_memory()
 
+        # --- Load user feedback data on startup ---
+        self.user_data_file = "data/user_data.json"
+        self.user_feedback = self.load_user_data()
+
         # --- Initialize Response Engine ---
         self.engine = ResponseEngine(mode="local")
 
         # Chat history
         self.chat_history = []
+
+        # Short-term memory (stores last few messages)
+        self.context_window = []
+        self.max_context = 5  # how many past exchanges to remember
+
         
         # Track last tone used in Auto mode
         self.last_auto_tone = None
@@ -49,6 +58,49 @@ class AICoachCompanion:
         """Save memory to JSON file"""
         with open(self.memory_file, "w") as f:
             json.dump(self.memory_data, f, indent=4)
+
+
+    def load_user_data(self):
+        """Safely load persisted user feedback data from JSON file."""
+        try:
+            if os.path.exists(self.user_data_file):
+                with open(self.user_data_file, "r") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        return data
+                    return []
+            else:
+                # Ensure data directory exists
+                os.makedirs(os.path.dirname(self.user_data_file), exist_ok=True)
+                return []
+        except Exception:
+            # On any parse or IO error, start fresh but don't crash UI
+            return []
+
+    def save_user_data(self):
+        """Safely persist user feedback list to JSON file."""
+        try:
+            os.makedirs(os.path.dirname(self.user_data_file), exist_ok=True)
+            with open(self.user_data_file, "w") as f:
+                json.dump(self.user_feedback, f, indent=4)
+        except Exception as e:
+            print("User data save error:", e)
+
+    def save_user_feedback_entry(self, user_message, ai_response, feedback, detected_mood, tone_used):
+        """Append one feedback entry and persist to disk."""
+        entry = {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "user_message": user_message,
+            "ai_response": ai_response,
+            "feedback": feedback,
+            "detected_mood": detected_mood,
+            "tone_used": tone_used
+        }
+        self.user_feedback.append(entry)
+        self.save_user_data()
+
+        self.engine.refresh_user_preferences()
+
 
 
     def detect_mood(self, message):
@@ -255,6 +307,57 @@ class AICoachCompanion:
             "message": message,
             "type": message_type
         })
+
+    def render_feedback_controls(self, user_message, ai_response, detected_mood, tone_used):
+        """Render Like/Dislike buttons inline after an AI response."""
+        # Create a small frame to hold the buttons side-by-side
+        btn_frame = tk.Frame(self.chat_display, bg='white')
+
+        like_btn = tk.Button(
+            btn_frame,
+            text="👍 Like",
+            font=("Arial", 9),
+            bg='#ecf9f1',
+            fg='#2c3e50',
+            relief=tk.FLAT,
+            cursor='hand2'
+        )
+
+        dislike_btn = tk.Button(
+            btn_frame,
+            text="👎 Dislike",
+            font=("Arial", 9),
+            bg='#fdecea',
+            fg='#2c3e50',
+            relief=tk.FLAT,
+            cursor='hand2'
+        )
+
+        def on_click(choice):
+            # Persist feedback
+            self.save_user_feedback_entry(
+                user_message=user_message,
+                ai_response=ai_response,
+                feedback=choice,
+                detected_mood=detected_mood,
+                tone_used=tone_used
+            )
+            # Disable buttons after selection to prevent duplicates
+            like_btn.config(state=tk.DISABLED)
+            dislike_btn.config(state=tk.DISABLED)
+
+        like_btn.config(command=lambda: on_click("like"))
+        dislike_btn.config(command=lambda: on_click("dislike"))
+
+        like_btn.pack(side=tk.LEFT, padx=(0, 6))
+        dislike_btn.pack(side=tk.LEFT)
+
+        # Insert the frame into the text widget inline
+        self.chat_display.config(state=tk.NORMAL)
+        self.chat_display.window_create(tk.END, window=btn_frame)
+        self.chat_display.insert(tk.END, "\n\n")
+        self.chat_display.see(tk.END)
+        self.chat_display.config(state=tk.DISABLED)
     
     def send_message(self):
         """Handle sending a message"""
@@ -282,12 +385,11 @@ class AICoachCompanion:
         self.generate_ai_response(message, detected_mood)
     
     def generate_ai_response(self, user_message, mood="neutral"):
-        """Generate AI response using the ResponseEngine"""
+        """Generate AI response using ResponseEngine with context memory + auto tone"""
         selected_tone = self.tone_var.get()
-        
-        # Handle Auto mode: select tone based on detected mood
+
+        # --- Auto tone logic ---
         if selected_tone == "Auto":
-            # Map mood to tone: happy → Balanced, sad → Empathetic, neutral → Blunt
             mood_to_tone = {
                 "happy": "Balanced",
                 "sad": "Empathetic",
@@ -296,17 +398,48 @@ class AICoachCompanion:
                 "stressed": "Empathetic"
             }
             tone = mood_to_tone.get(mood, "Balanced")
-            
-            # Show system message if tone changed (first time or different from last)
+
+            if not hasattr(self, "last_auto_tone"):
+                self.last_auto_tone = None
+
             if tone != self.last_auto_tone:
                 self.add_message("System", f"Tone switched to {tone} (Auto mode)", "system")
                 self.last_auto_tone = tone
         else:
             tone = selected_tone
-        
-        response = self.engine.generate_response(user_message, tone)
+
+        # --- Context memory logic ---
+        context_text = "\n".join(
+            [f"You: {msg['user']} | Coach: {msg['ai']}" for msg in getattr(self, 'context_window', [])]
+        )
+        combined_input = f"{context_text}\nYou: {user_message}"
+
+        # --- Generate response ---
+        response = self.engine.generate_response(combined_input, tone, mood)
         self.add_message("AI Coach", response, "ai")
         self.log_interaction(user_message, response, mood)
+
+        # --- Render feedback buttons for this AI response ---
+        try:
+            self.render_feedback_controls(
+                user_message=user_message,
+                ai_response=response,
+                detected_mood=mood,
+                tone_used=tone
+            )
+        except Exception as e:
+            # Don't let UI fail if rendering feedback controls has issues
+            print("Feedback UI error:", e)
+
+        # --- Update short-term memory ---
+        if not hasattr(self, 'context_window'):
+            self.context_window = []
+            self.max_context = 5
+
+        self.context_window.append({"user": user_message, "ai": response})
+        if len(self.context_window) > self.max_context:
+            self.context_window.pop(0)
+
 
 
     
