@@ -4,6 +4,8 @@ import random
 import json
 import os
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from tk_app.preference_learner import PreferenceLearner
+
 
 class ResponseEngine:
     def __init__(self, mode="local"):
@@ -12,6 +14,8 @@ class ResponseEngine:
         # Preference data loaded from user feedback
         self.user_feedback_path = "data/user_data.json"
         self.liked_tone_counts, self.liked_mood_counts = self._load_user_preferences()
+        self.preference_learner = PreferenceLearner()
+
 
     def _load_user_preferences(self):
         """Load user feedback and aggregate likes for tone and mood."""
@@ -149,9 +153,16 @@ class ResponseEngine:
         Keeps the existing 'local' behavior and reserves 'api' mode for later.
         """
         if self.mode == "local":
-            return self.generate_local_response(message, tone, mood)
+        # Get preferred tone from learner
+            preferred_tone = self.preference_learner.recommend_tone()
+            print(f"[DEBUG] Tone in use: {preferred_tone or tone}")  # Debug confirmation
+        
+        # Generate response with preferred tone if available
+            return self.generate_local_response(message, preferred_tone or tone, mood)
+    
         else:
             return self.generate_ai_response(message, tone, mood)
+
 
     # --- Refresh user preferences ---
     def refresh_user_preferences(self):

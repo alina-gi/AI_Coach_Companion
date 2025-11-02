@@ -1,0 +1,3 @@
+- All data stored locally in /data folder.
+- No cloud storage or external API access in early versions.
+- User can clear or export memory anytime.

@@ -5,6 +5,7 @@ from datetime import datetime
 import os
 from textblob import TextBlob  # add this import at the top with others
 from response_engine import ResponseEngine
+from modules.analytical_hub import AnalyticsHub
 
 
 class AICoachCompanion:
@@ -36,11 +37,34 @@ class AICoachCompanion:
         # Track last tone used in Auto mode
         self.last_auto_tone = None
 
+         # ✅ Define main frame FIRST
+        self.main_frame = tk.Frame(self.root, bg="#1e1e1e")
+        self.main_frame.pack(fill="both", expand=True)
+
+        analytics_btn = tk.Button(
+    self.main_frame,
+    text="📊",
+    font=("Segoe UI", 11, "bold"),
+    bg="#1e1e1e",
+    fg="white",
+    relief="flat",
+    command=self.open_analytics_hub,
+    width=3
+)
+        analytics_btn.pack(side="right", padx=10, pady=0)
+
+
+
         # UI setup
         self.setup_ui()
 
         # Welcome message
         self.add_message("AI Coach", "Hello! I'm your AI Coach Companion. How can I help you today?", "system")
+
+
+    def open_analytics_hub(self):
+        analytics_window = tk.Toplevel(self.root)
+        AnalyticsHub(analytics_window)
 
     # ---------- MEMORY SYSTEM ----------
     def load_memory(self):
@@ -153,6 +177,8 @@ class AICoachCompanion:
         
         # Input area
         self.setup_input_area(main_frame)
+        
+
     
     def setup_chat_area(self, parent):
         """Set up the chat display area"""
@@ -599,6 +625,7 @@ class AICoachCompanion:
                 f"An error occurred while exporting memory:\n{str(e)}",
                 icon="error"
             )
+
 
 def main():
     """Main function to run the application"""

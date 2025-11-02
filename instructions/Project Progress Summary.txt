@@ -1,0 +1,91 @@
+🧩 AI Coach Companion — Project Progress Summary
+🧠 Phase 1 — Core Logic & Architecture
+
+Goal: Build the internal “brain” of your AI companion.
+
+✅ Completed
+
+Response Engine:
+Handles user input → analyzes sentiment (via TextBlob & Vader) → decides tone and feedback type.
+→ Acts as the logic center of your app.
+
+Feedback Manager:
+Saves user feedback (like/dislike) with detected mood and tone used → builds personal learning data.
+
+Preference System:
+Stores user preferences (e.g., tone type: blunt, kind, supportive).
+→ The app adapts its communication style dynamically.
+
+Data Storage:
+All data (mood logs, feedback, preferences) persist in JSON files.
+→ This simulates user history for now — will later move to a database in the web version.
+
+🎯 Purpose:
+To make the app self-aware of emotional tone, context, and user’s past reactions — not just reply blindly.
+
+🖥️ Phase 2 — Interface & Interaction
+
+Goal: Build the frontend layer to visualize interaction and data.
+
+✅ Completed
+
+Tkinter-based interface with chat-style UI.
+
+Added Analytics button (for backend insights).
+
+Responses appear interactively with scrollable chat area.
+
+Feedback buttons (like/dislike) integrated.
+
+⚙️ In Progress
+
+Analytics Hub (mood trend dashboard) partially done.
+
+Can visualize feedback, moods, tone, but needs polishing and visual placement improvements.
+
+Layout optimization (like repositioning “Open Analytics” button to top right).
+
+🎯 Purpose:
+Create an interactive, emotional, data-driven chat companion — not just console-based responses.
+
+🔜 Phase 3 — Integration Layer
+
+Goal: Add intelligence + prepare for web migration.
+
+Next Steps
+
+Integrate OpenAI API:
+
+Replace hardcoded responses with GPT-generated ones.
+
+Still run your ResponseEngine logic before/after GPT to keep emotional analysis and user adaptation.
+
+Enhance Analytics Hub:
+
+Show charts for mood trends, tone usage, and feedback ratios.
+
+Add export/report features.
+
+Session History Panel:
+
+Display past conversations by date/time.
+
+Option to clear or review.
+
+🌐 Phase 4 (Future) — Web System
+
+Goal: Convert the app into a web-based companion.
+
+Planned:
+
+Flask or FastAPI backend
+
+React or Streamlit frontend
+
+Login/auth system
+
+Cloud-based user data
+
+OpenAI integration for response generation
+
+Admin/insight dashboard (for you)

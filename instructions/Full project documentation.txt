@@ -1,0 +1,142 @@
+🧠 AI Coach Companion — Full Project Documentation (Phase 1–3 Overview)
+1. Project Overview
+
+Name: AI Coach Companion
+Type: Intelligent Emotion-Aware Chat Application
+Platform: Desktop (Tkinter GUI) — later to be migrated to Web (Flask/React or Streamlit)
+Purpose:
+A personalized AI companion that interacts with users in different tones (blunt, kind, supportive), learns from feedback, and adapts its responses based on mood and emotional data.
+
+2. Core Concept
+
+The system acts as a self-learning emotional coach, designed to:
+
+Communicate in user-preferred tones
+
+Detect emotional sentiment from user messages
+
+Track feedback to improve tone selection
+
+Provide analytics and insights into user interaction patterns
+
+Key Idea:
+Unlike ordinary chatbots that only generate responses, AI Coach Companion evolves emotionally and analytically — it “learns” the user’s mood, preferences, and reactions over time.
+
+3. System Architecture
+A. Core Modules
+
+Response Engine
+
+Handles text input/output.
+
+Detects mood and sentiment using:
+
+TextBlob for polarity.
+
+VaderSentiment for intensity scoring.
+
+Chooses response tone (supportive / blunt / neutral).
+
+Connects with feedback data to self-adjust.
+
+Feedback Manager
+
+Captures user reaction after each AI message.
+
+Saves user_message, ai_response, feedback, mood, and tone into JSON.
+
+Builds the dataset for personalization and trend analysis.
+
+Preference System
+
+Stores user’s selected tone preference.
+
+Ensures every reply aligns with that preference.
+
+Persists across sessions.
+
+Data Management
+
+JSON-based local database structure.
+
+Folder: /data/user_data.json
+
+Stores cumulative logs for feedback, preferences, and mood states.
+
+B. Frontend (Tkinter Interface)
+
+Main Chat Window
+
+Scrollable text display area.
+
+User input box.
+
+Feedback buttons (👍 👎).
+
+Adaptive color theme (dark mode aesthetic).
+
+Analytics Hub
+
+Open via button (“📊 Analytics”).
+
+Shows:
+
+Preference Summary (text-based insights).
+
+Mood Trend Dashboard (visual charts via Matplotlib).
+
+Allows developers (you) to analyze how the model is behaving.
+
+4. Data Flow
+
+User Input → Response Engine
+→ Detect sentiment and tone.
+
+Response Engine → Feedback Manager
+→ Save interaction + emotional metadata.
+
+User Feedback → Preference System
+→ Adjust tone for next responses.
+
+Analytics Hub
+→ Summarize and visualize all data trends.
+
+5. Technology Stack
+Component	Tool / Library	Purpose
+GUI	Tkinter	Desktop user interface
+NLP	TextBlob, VaderSentiment	Mood and sentiment detection
+Data	JSON	Local storage for logs and preferences
+Visualization	Matplotlib	Trend and mood analysis
+API Integration (Future)	OpenAI GPT	Dynamic and context-aware responses
+Backend (Future)	Flask / FastAPI	Web-based deployment
+Frontend (Future)	React / Streamlit	Web UI
+Storage (Future)	SQLite / Firebase	Persistent user data
+6. Development Progress
+Phase	Status	Description
+Phase 1	✅ Done	Built core logic (Response Engine, Feedback Manager, Preferences)
+Phase 2	⚙️ In Progress	GUI + Analytics Hub (functional but needs polish)
+Phase 3	🔜 Planned	Add OpenAI API for natural replies
+Phase 4	🔜 Planned	Web-based version + login/auth system
+7. Vision & Long-Term Goal
+
+To transform this emotional AI assistant into a personal growth companion — one that not only replies intelligently but also helps users analyze their emotional and behavioral trends over time.
+
+It could later evolve into:
+
+AI Therapist / Mentor App
+
+Daily Reflection Journal
+
+Emotional Insight Dashboard
+
+Or integrate into creative/learning apps as an AI Emotion Layer
+
+8. Current Focus
+
+🎯 Next Step:
+Integrate OpenAI API responses while keeping your ResponseEngine as the emotional layer.
+This means:
+
+GPT handles the content of replies.
+
+Your engine handles the emotion, tone, and personalization logic.
