@@ -5,16 +5,30 @@ import json
 import os
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from tk_app.preference_learner import PreferenceLearner
+from openai import OpenAI
+from dotenv import load_dotenv
+
 
 
 class ResponseEngine:
-    def __init__(self, mode="local"):
+    def __init__(self, mode="api"):
         self.mode = mode
         self.analyzer = SentimentIntensityAnalyzer()  # ← Initialize VADER here
+
+         # Load API key and initialize client
+        load_dotenv()
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            print("[WARNING] No OpenAI API key found. Running in local mode.")
+        self.client = OpenAI(api_key=api_key) if api_key else None
+
+
         # Preference data loaded from user feedback
         self.user_feedback_path = "data/user_data.json"
         self.liked_tone_counts, self.liked_mood_counts = self._load_user_preferences()
         self.preference_learner = PreferenceLearner()
+        print(f"[DotPi] ResponseEngine initialized in {self.mode.upper()} mode.")
+
 
 
     def _load_user_preferences(self):
@@ -47,11 +61,24 @@ class ResponseEngine:
         except Exception:
             # On any error, return zeroed prefs to avoid breaking logic
             pass
-        print("Liked tones:", liked_tone_counts)
-        print("Liked moods:", liked_mood_counts)
+        #print("Liked tones:", liked_tone_counts)
+        #print("Liked moods:", liked_mood_counts)
 
 
         return liked_tone_counts, liked_mood_counts
+
+    def test_openai_connection(self, message="Hello DotPi!"):
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a friendly AI coach."},
+                    {"role": "user", "content": message}
+                ]        )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"Error: {e}"
+
 
     def _weighted_choice(self, weights_dict):
         """Return a key from weights_dict based on weighted random selection."""
@@ -71,6 +98,9 @@ class ResponseEngine:
         try:
             scores = self.analyzer.polarity_scores(message)
             compound = scores["compound"]
+
+            print("Scores:", scores, "Compound:", compound)
+
 
             if compound >= 0.3:
                 return "positive"
@@ -148,20 +178,17 @@ class ResponseEngine:
         return prefix + choice
 
     def generate_response(self, message, tone, mood=None):
-        """
-        Main function — safe signature that accepts mood.
-        Keeps the existing 'local' behavior and reserves 'api' mode for later.
-        """
+        """Main function — accepts mood and switches between local or API."""
         if self.mode == "local":
-        # Get preferred tone from learner
+            # Get preferred tone from learner
             preferred_tone = self.preference_learner.recommend_tone()
-            print(f"[DEBUG] Tone in use: {preferred_tone or tone}")  # Debug confirmation
-        
-        # Generate response with preferred tone if available
+            #print(f"[DEBUG] Tone in use: {preferred_tone or tone}")  # Debug confirmation
+            
+            # Generate response with preferred tone if available
             return self.generate_local_response(message, preferred_tone or tone, mood)
-    
         else:
             return self.generate_ai_response(message, tone, mood)
+
 
 
     # --- Refresh user preferences ---
@@ -171,6 +198,48 @@ class ResponseEngine:
 
 
     def generate_ai_response(self, message, tone, mood=None):
-        """Placeholder for future API-based responses."""
-        # You can build a prompt using message, tone, mood and call OpenAI/local LLM here.
-        return "AI mode not active yet — coming soon!"
+        """
+        Generate AI-based response using OpenAI API,
+        enhanced with DotPi's local tone + mood logic.
+        Falls back to local generation if API call fails.
+        """
+        # 1️⃣ Detect mood if not provided
+        if mood is None:
+            mood = self.detect_mood(message)
+
+        # 2️⃣ Get preferred tone (learned locally)
+        preferred_tone = self.preference_learner.recommend_tone() or tone
+
+        # 3️⃣ Build system prompt with mood + tone context
+        system_prompt = (
+            "You are DotPi — an intelligent, emotionally-aware AI coach. "
+            "Your goal is to respond to the user in a tone that fits both their detected mood "
+            "and their learned preference tone. "
+            "Be concise, human-like, and emotionally attuned. "
+            f"Detected mood: {mood}. "
+            f"Preferred tone: {preferred_tone}. "
+            "If user sounds down, be supportive. If positive, encourage them. "
+            "Keep it conversational, no long paragraphs. "
+        )
+
+        try:
+            # 4️⃣ Generate GPT-based response
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": message}
+                ],
+                temperature=0.8
+            )
+
+            ai_message = response.choices[0].message.content.strip()
+            print(f"[DotPi][AI Mode] GPT response: {ai_message}")
+            return ai_message
+
+        except Exception as e:
+            # 5️⃣ Safe fallback to local mode
+            print(f"[DotPi] API error → Falling back to local mode: {e}")
+            return self.generate_local_response(message, preferred_tone, mood)
+
+    

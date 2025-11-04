@@ -24,7 +24,7 @@ class AICoachCompanion:
         self.user_feedback = self.load_user_data()
 
         # --- Initialize Response Engine ---
-        self.engine = ResponseEngine(mode="local")
+        self.engine = ResponseEngine(mode="api")
 
         # Chat history
         self.chat_history = []
@@ -61,6 +61,8 @@ class AICoachCompanion:
         # Welcome message
         self.add_message("AI Coach", "Hello! I'm your AI Coach Companion. How can I help you today?", "system")
 
+        self.engine = ResponseEngine()
+        print(self.engine.test_openai_connection("Hey, WHATS THE DAY TODAY?"))
 
     def open_analytics_hub(self):
         analytics_window = tk.Toplevel(self.root)
@@ -625,6 +627,7 @@ class AICoachCompanion:
                 f"An error occurred while exporting memory:\n{str(e)}",
                 icon="error"
             )
+
 
 
 def main():
